@@ -2,7 +2,8 @@
 title: "Coursera-Practical Machine Learning Project"
 author: "Abdul Rasheed Narejo"
 date: "06/09/2018"
-output: html_document
+output:
+    html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -14,10 +15,10 @@ knitr::opts_chunk$set(echo = TRUE)
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
 
 ## Goal
-The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. We may use any of the other variables to predict with. In the end, we will use the best prediction model to predict 20 different test cases.
 
 ## Loading libraries
-```{r}
+```{r, message = FALSE}
 library(caret) 
 library(rattle)
 library(rpart)
@@ -27,8 +28,7 @@ library(class)
 ```
 
 ## loading data
-The data for this assignment includes a separate training and testing data set. The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har
-
+The data for this assignment includes a separate training and testing data set. source: http://groupware.les.inf.puc-rio.br/har  
 
 ```{r}
 trainingInitial <- read.csv("data/pml-training.csv", na.strings=c("NA",""), header = TRUE)
@@ -45,7 +45,7 @@ dim(testingFinal)
 ## Cleaning the data
 The training data has 19,622 observations for 160 different variables (columns). Some of these columns have significant percentage of NA/empty data. We will check for columns with significant missing values and remove them from the data.
 
-We will also remove first 7 columns which are variables which will not be useful in model quality.
+We will also remove first 7 columns which are variables which will not be useful in predictive model building.
 
 ```{r}
 # calculate percentage of missing values in each column
@@ -64,26 +64,25 @@ df$classe <- as.factor(df$classe)
 ```
 
 ## Split df into Training and Testing Data for model creation/testing
-We will subdivide our training data into training and testing data. For this we will split data into two parts, 0.7 in training, 0.3 in testing. For this, we will use caret package function createDataPartition.
+We will subdivide our training data into training and testing data. For this we will split data into two parts, 70% training, 30% testing. We will use caret package function createDataPartition for this.
 
 ```{r}
 set.seed(333)
 inTrain <- createDataPartition(y = df$classe, p = 0.7, list = FALSE)
 training <- df[inTrain,]
 testing <- df[-inTrain,]
-# dim(training); dim(testing)
+dim(training); dim(testing)
 ```
-
 ## Develop Machine Learning Models
-Instead of using caret package, I have directly used library for each machine learning model due to lower complexity and higher visibility on inputs. Caret package considers some base level assumes which significantly slow down the model while the output benefit is relatively hard to quantify.
+Instead of using caret package, I have directly used specific library for each machine learning model due to lower complexity and higher visibility on inputs. Caret package considers some base level assumptions which significantly slow down the model while the output benefit is relatively hard to quantify.
 
-For this project, I have found that using original libraries gives better understanding, relatively good performance and greater understanding of model working.
+For this project, I have found that using original libraries gives better understanding, relatively good performance and greater control of model working.
 
 I have applied following three parts with their respective accuracy;
 
-* Rpart with accuracy of ``
-* Random forest with accuracy of ``
-* Gradient Boosting Model with accuracy of ``
+* Rpart
+* Random forest
+* Gradient Boosting Model
 
 ### 1. Recursive Partitioning - Rpart (Classification Tree)
 ```{r}
@@ -105,7 +104,7 @@ confMatrixRP <- confusionMatrix(testing$classe, predictRP)
 confMatrixRP
 ```
 
-Classification tree has generated accuracy of only xxxxxxxxxxx which is quite low.
+Classification tree has generated accuracy of only `r round(confMatrixRP$overall[1], 2)` which is not bad for the start.
 
 ### 2. Random Forest
 ```{r}
@@ -117,11 +116,11 @@ predictRF <- predict(modelRF, newdata = testing)
 ```
 
 ```{r}
-confMatRF <- confusionMatrix(testing$classe, predictRF)
-confMatRF
+confMatrixRF <- confusionMatrix(testing$classe, predictRF)
+confMatrixRF
 ```
 
-Random forest model has generate a high level of accuracy of xxx
+Random forest model has generate a high level of accuracy of `r round(confMatrixRF$overall[1], 2)` which is nearly perfect. However, for sake of variety we will also use Gradient Boosting Model.
 
 ### 3. Gradient Boosting Model
 ```{r}
@@ -133,19 +132,20 @@ modelGbm <- gbm(classe ~ .,data=training,
          shrinkage=0.005)
 ```
 
+
 ```{r}
 predictGbm <- predict(modelGbm, newdata = testing, n.trees=200, type="response")
 pred_class <- apply(predictGbm, 1, which.max)
 x <- colnames(predictGbm)[pred_class]
-mean(x == testing$classe)
+GbmAccuracy <- mean(x == testing$classe)
 ```
-
+Gradient Boosting Model has generated accuracy of `r round(GbmAccuracy, 2)` which is better than rpart but not as good as Random Forest.
 
 ## Conclusion
-Based on the above three models - Rpart, Random Forest, Gradient Boosting Model - we found Random Forest provided highest level of accuracy of ``. Hence, we have selected Random Forest model for final selection.
+Based on the above three models - Rpart, Random Forest, Gradient Boosting Model - we found Random Forest provided highest level of accuracy of `r round(confMatrixRF$overall[1], 2)`. Hence, we have selected Random Forest model for final selection.
 
-```
-finalPrediction <- predict(modelRF, testingFinal)
-
+```{r}
+finalPrediction <- predict(modelRF, newdata = testingFinal)
+finalPrediction
 ```
 
