@@ -1,0 +1,151 @@
+---
+title: "Coursera-Practical Machine Learning Project"
+author: "Abdul Rasheed Narejo"
+date: "06/09/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## About the assignment
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+## Goal
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+## Loading libraries
+```{r}
+library(caret) 
+library(rattle)
+library(rpart)
+library(gbm)
+library(randomForest)
+library(class)
+```
+
+## loading data
+The data for this assignment includes a separate training and testing data set. The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har
+
+
+```{r}
+trainingInitial <- read.csv("data/pml-training.csv", na.strings=c("NA",""), header = TRUE)
+dim(trainingInitial)
+```
+
+```{r}
+testingFinal <- read.csv("data/pml-testing.csv", na.strings=c("NA",""), header=TRUE)
+dim(testingFinal)
+```
+**Note:** The testingFinal data frame is only going to be used for validation of final model/test. We will keep this aside.
+
+
+## Cleaning the data
+The training data has 19,622 observations for 160 different variables (columns). Some of these columns have significant percentage of NA/empty data. We will check for columns with significant missing values and remove them from the data.
+
+We will also remove first 7 columns which are variables which will not be useful in model quality.
+
+```{r}
+# calculate percentage of missing values in each column
+NaRatio <- apply(trainingInitial, 2, function(col)sum(is.na(col))/length(col))
+
+# filter columns with missing values
+# all columns with missing values have high ratio of missing values(95% plus)
+df <- trainingInitial[,NaRatio == 0]
+
+# remove columns 1:7 due to their lack of relevance in model developments
+df <- df[,-c(1:7)]
+
+# convert response/target variable as factor variable
+df$classe <- as.factor(df$classe)
+
+```
+
+## Split df into Training and Testing Data for model creation/testing
+We will subdivide our training data into training and testing data. For this we will split data into two parts, 0.7 in training, 0.3 in testing. For this, we will use caret package function createDataPartition.
+
+```{r}
+set.seed(333)
+inTrain <- createDataPartition(y = df$classe, p = 0.7, list = FALSE)
+training <- df[inTrain,]
+testing <- df[-inTrain,]
+# dim(training); dim(testing)
+```
+
+## Develop Machine Learning Models
+Instead of using caret package, I have directly used library for each machine learning model due to lower complexity and higher visibility on inputs. Caret package considers some base level assumes which significantly slow down the model while the output benefit is relatively hard to quantify.
+
+For this project, I have found that using original libraries gives better understanding, relatively good performance and greater understanding of model working.
+
+I have applied following three parts with their respective accuracy;
+
+* Rpart with accuracy of ``
+* Random forest with accuracy of ``
+* Gradient Boosting Model with accuracy of ``
+
+### 1. Recursive Partitioning - Rpart (Classification Tree)
+```{r}
+# create model
+modelRP<- rpart(classe ~ ., data = training, method="class")
+```
+
+```{r}
+fancyRpartPlot(modelRP)
+```
+
+```{r}
+# Predicting the classe variables on testing dataset
+predictRP <- predict(modelRP, newdata = testing, type="class")
+```
+
+```{r}
+confMatrixRP <- confusionMatrix(testing$classe, predictRP)
+confMatrixRP
+```
+
+Classification tree has generated accuracy of only xxxxxxxxxxx which is quite low.
+
+### 2. Random Forest
+```{r}
+# create model
+modelRF <- randomForest(classe ~ ., data = training, ntree = 10)
+
+# Predicting the classe variables on testing dataset
+predictRF <- predict(modelRF, newdata = testing)
+```
+
+```{r}
+confMatRF <- confusionMatrix(testing$classe, predictRF)
+confMatRF
+```
+
+Random forest model has generate a high level of accuracy of xxx
+
+### 3. Gradient Boosting Model
+```{r}
+modelGbm <- gbm(classe ~ .,data=training,
+         distribution='multinomial',
+         n.trees=200,
+         interaction.depth=5,
+         #cv.folds=5,
+         shrinkage=0.005)
+```
+
+```{r}
+predictGbm <- predict(modelGbm, newdata = testing, n.trees=200, type="response")
+pred_class <- apply(predictGbm, 1, which.max)
+x <- colnames(predictGbm)[pred_class]
+mean(x == testing$classe)
+```
+
+
+## Conclusion
+Based on the above three models - Rpart, Random Forest, Gradient Boosting Model - we found Random Forest provided highest level of accuracy of ``. Hence, we have selected Random Forest model for final selection.
+
+```
+finalPrediction <- predict(modelRF, testingFinal)
+
+```
+
